@@ -1,0 +1,195 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 30 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 63%;
+
+    --accent: 45 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 14%;
+    --ring: 30 100% 50%;
+
+    --radius: 0.5rem;
+    
+    /* Add purple variations for the glow effect */
+    --purple-primary: 263 74% 74%;
+    --purple-secondary: 263 54% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.nova-flat-regular {
+  font-family: "Nova Flat", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@layer components {
+  .honeycomb-bg {
+    background-color: hsl(var(--background));
+    background-image: 
+      linear-gradient(to right, rgba(255, 123, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 123, 0, 0.05) 1px, transparent 1px),
+      radial-gradient(rgba(255, 123, 0, 0.1) 1px, transparent 1px);
+    background-size: 30px 30px, 30px 30px, 30px 30px;
+    background-position: 0px 0px;
+  }
+
+  /* Add back the honeycomb-glow class for main background only */
+  .main-honeycomb-glow::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 123, 0, 0.1), transparent 60%);
+    animation: honeycomb-glow 15s ease infinite;
+    z-index: 0;
+  }
+
+  .purple-glow {
+    box-shadow: 0 0 50px 10px hsla(var(--purple-primary), 0.6);
+    animation: purple-pulse 3s infinite alternate;
+  }
+
+  .chat-input-highlight {
+    position: relative;
+  }
+
+  .chat-input-highlight::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: var(--radius);
+    background: linear-gradient(45deg, rgba(255, 123, 0, 0.7), rgba(255, 215, 0, 0.7));
+    z-index: -1;
+    animation: flow-effect 3s infinite;
+  }
+
+  .typing-placeholder {
+    @apply overflow-hidden whitespace-nowrap;
+    display: inline-block;
+    border-right: 3px solid transparent;
+    animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+  }
+
+  /* Audio waveform animation */
+  .bar {
+    display: inline-block;
+    width: 2px;
+    height: 30%; 
+    background-color: rgba(255, 123, 0, 0.8);
+    margin: 0 1px;
+    border-radius: 2px;
+    transition: height 0.1s ease;
+    animation: pulse 0.5s infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+
+  @keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: rgba(255, 123, 0, 0.7) }
+  }
+
+  /* Enhanced pulsating animation for the purple glow */
+  @keyframes purple-pulse {
+    0% { box-shadow: 0 0 30px 5px rgba(155, 135, 245, 0.4); }
+    50% { box-shadow: 0 0 70px 20px rgba(155, 135, 245, 0.7); }
+    100% { box-shadow: 0 0 40px 10px rgba(155, 135, 245, 0.5); }
+  }
+
+  /* Add back the honeycomb-glow animation */
+  @keyframes honeycomb-glow {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  /* Additional utility classes for custom top spacing */
+  .top-22 {
+    top: 5.5rem;
+  }
+  
+  /* Radial menu animation */
+  @keyframes fadeInScale {
+    from { 
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .radial-menu-item {
+    animation: fadeInScale 0.3s forwards;
+  }
+
+  /* Backdrop blur transition */
+  .backdrop-blur-sm {
+    animation: blurIn 0.3s forwards;
+  }
+
+  @keyframes blurIn {
+    from {
+      backdrop-filter: blur(0px);
+      opacity: 0;
+    }
+    to {
+      backdrop-filter: blur(4px);
+      opacity: 1;
+    }
+  }
+}
+
+/* Override the dialog overlay to be darker for the watchlist modal */
+[data-state="open"] > .fixed.inset-0.z-50.bg-black\/80 {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
