@@ -1,33 +1,104 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Session, User } from '@supabase/supabase-js';
 
-type User = {
-  email: string;
-  name?: string;
+type UserWithProfile = User & {
+  profile?: {
+    full_name: string;
+    username: string;
+    avatar_url?: string;
+  }
 };
 
 interface AuthContextType {
-  user: User | null;
+  user: UserWithProfile | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserWithProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is already logged in from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem('draconic-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  // Get user profile data
+  const getUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getUserProfile:', error);
+      return null;
     }
-    setIsLoading(false);
+  };
+
+  // Set up auth state listener and check for existing session
+  useEffect(() => {
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          const profile = await getUserProfile(currentSession.user.id);
+          
+          // Combine user with profile data
+          const userWithProfile = {
+            ...currentSession.user,
+            profile: profile || undefined
+          };
+          
+          setUser(userWithProfile);
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Then check for existing session
+    const initializeAuth = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (currentSession?.user) {
+        const profile = await getUserProfile(currentSession.user.id);
+        
+        // Combine user with profile data
+        const userWithProfile = {
+          ...currentSession.user,
+          profile: profile || undefined
+        };
+        
+        setUser(userWithProfile);
+        setSession(currentSession);
+      }
+      
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -38,16 +109,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (email === 'dev@draconic.ai' && password === 'babydragon') {
         const user = { 
           email, 
-          name: 'Abhinandan' 
-        };
+          profile: {
+            full_name: 'Abhinandan',
+            username: 'abhinandan'
+          }
+        } as UserWithProfile;
         setUser(user);
-        localStorage.setItem('draconic-user', JSON.stringify(user));
         setIsLoading(false);
         return true;
-      } else {
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
         setIsLoading(false);
         return false;
       }
+
+      // Profile data will be fetched by the auth listener
+      setIsLoading(false);
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       setIsLoading(false);
@@ -56,21 +141,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
-    // Instead of logging in, just show a toast message
-    toast({
-      title: "Google Login",
-      description: "Sign in with Google feature coming soon!",
-    });
-    return false;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/login',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      });
+
+      if (error) {
+        console.error('Google login error:', error);
+        toast({
+          title: "Sign In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // We don't set user here because the redirect will happen
+      // and onAuthStateChange will handle it after redirect
+      return true;
+    } catch (error) {
+      console.error('Google login error:', error);
+      toast({
+        title: "Sign In Failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('draconic-user');
+  const logout = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Failed",
+        description: "An error occurred while signing out",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, session, login, loginWithGoogle, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
