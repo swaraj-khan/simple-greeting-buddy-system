@@ -67,7 +67,7 @@ const Header = () => {
                 <div className="font-semibold">My Account</div>
                 {user && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {user.name || user.email}
+                    {user.profile?.full_name || user.email}
                   </div>
                 )}
               </DropdownMenuLabel>
