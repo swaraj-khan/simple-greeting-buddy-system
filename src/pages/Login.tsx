@@ -35,16 +35,29 @@ export default function Login() {
     },
   });
 
+  // Debug information
+  useEffect(() => {
+    console.log('Current URL:', window.location.href);
+    console.log('Origin:', window.location.origin);
+  }, []);
+
   // Handle OAuth redirect
   useEffect(() => {
     const handleOAuthRedirect = async () => {
       const url = window.location.href;
+      console.log('Checking for OAuth redirect in URL:', url);
+      
       if (url.includes('#access_token') || url.includes('?code=')) {
+        console.log('OAuth redirect detected');
         setIsProcessingOAuth(true);
         
         try {
-          const { error } = await supabase.auth.getSession();
+          console.log('Getting session from Supabase...');
+          const { data, error } = await supabase.auth.getSession();
+          console.log('Session data:', data);
+          
           if (error) {
+            console.error('Authentication error:', error);
             toast({
               title: "Authentication Failed",
               description: error.message,
@@ -74,6 +87,8 @@ export default function Login() {
         } finally {
           setIsProcessingOAuth(false);
         }
+      } else {
+        console.log('No OAuth redirect detected in URL');
       }
     };
 
@@ -103,6 +118,7 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
+    console.log('Starting Google login process...');
     await loginWithGoogle();
   };
 
