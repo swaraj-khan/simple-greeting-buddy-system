@@ -1,5 +1,5 @@
 
-export type FileType = 'image' | 'document';
+export type FileType = 'image' | 'document' | 'chart' | 'journal' | 'orders' | 'books';
 
 export interface FileData {
   id: string;

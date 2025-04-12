@@ -1,15 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Session, User } from '@supabase/supabase-js';
+import { useUserProfile, UserProfile } from '@/hooks/useUserProfile';
+import { loginWithEmailPassword, loginWithGoogle, logout as authLogout } from '@/services/authService';
 
-type UserWithProfile = User & {
-  profile?: {
-    full_name: string;
-    username: string;
-    avatar_url?: string;
-  }
+export type UserWithProfile = User & {
+  profile?: UserProfile;
 };
 
 interface AuthContextType {
@@ -27,27 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserWithProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Get user profile data
-  const getUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in getUserProfile:', error);
-      return null;
-    }
-  };
+  const { getUserProfile } = useUserProfile();
 
   // Set up auth state listener and check for existing session
   useEffect(() => {
@@ -105,8 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      // For testing, check hardcoded credentials
-      if (email === 'dev@draconic.ai' && password === 'babydragon') {
+      const result = await loginWithEmailPassword(email, password);
+      
+      if (!result.success) {
+        setIsLoading(false);
+        return false;
+      }
+      
+      if (result.hardcodedUser) {
         const user = { 
           email, 
           profile: {
@@ -115,22 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } as UserWithProfile;
         setUser(user);
-        setIsLoading(false);
-        return true;
       }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Login error:', error);
-        setIsLoading(false);
-        return false;
-      }
-
-      // Profile data will be fetched by the auth listener
+      
+      // For non-hardcoded users, the auth listener will handle setting the user
+      
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -140,63 +111,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (): Promise<boolean> => {
-    try {
-      // Log the current URL to help with debugging
-      console.log('Current URL:', window.location.origin);
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/login`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      });
-
-      if (error) {
-        console.error('Google login error:', error);
-        toast({
-          title: "Sign In Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      // We don't set user here because the redirect will happen
-      // and onAuthStateChange will handle it after redirect
-      return true;
-    } catch (error) {
-      console.error('Google login error:', error);
-      toast({
-        title: "Sign In Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
   const logout = async (): Promise<void> => {
     try {
-      await supabase.auth.signOut();
+      await authLogout();
       setUser(null);
       setSession(null);
     } catch (error) {
       console.error('Logout error:', error);
-      toast({
-        title: "Logout Failed",
-        description: "An error occurred while signing out",
-        variant: "destructive",
-      });
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, loginWithGoogle, logout, isLoading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      login, 
+      loginWithGoogle, 
+      logout, 
+      isLoading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

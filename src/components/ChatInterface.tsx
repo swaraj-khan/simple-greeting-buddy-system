@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,6 +12,7 @@ import { useChatHistory, ChatMessage, ChatSession } from '@/hooks/useChatHistory
 import { useAuth } from '@/contexts/AuthContext';
 import { useFileUpload, UploadedFile } from '@/utils/fileUpload';
 import { FileType } from '@/types/files';
+import { createFileUploader } from '@/utils/fileUploadUtils';
 
 interface ChatInterfaceProps {}
 
@@ -49,7 +49,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const { isRecording, isMuted, transcript, toggleRecording, toggleMute, clearTranscript } = useSpeechRecognition();
   const { currentPlaceholder } = usePlaceholders(placeholders, isInputFocused, input, isRecording);
 
-  // Effect to load active chat messages
   useEffect(() => {
     if (activeChat) {
       setMessages(activeChat.messages);
@@ -64,12 +63,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
     const messageContent = input.trim() || transcript.trim();
     if (!messageContent) return;
     
-    // If not in talk mode, stop recording after sending the message
     if (isRecording && !isTalkModeEnabled) {
       toggleRecording();
     }
 
-    // Create a new chat if needed
     let currentChatId = activeChat?.id;
     if (!currentChatId) {
       const firstWords = messageContent.split(' ').slice(0, 5).join(' ');
@@ -89,7 +86,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       return;
     }
 
-    // Format the message content to include attached files
     let finalContent = messageContent;
     if (attachedFiles.length > 0) {
       finalContent += '\n\n' + attachedFiles.map(file => 
@@ -117,10 +113,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }, 1000);
     }
 
-    // Save the message to the database
     await saveMessage(currentChatId, userMessage);
     
-    // Mock bot response
     setTimeout(() => {
       const botResponse = "Here's your analysis of the market trends you requested. The data shows a bullish pattern with strong support levels.";
       
@@ -144,7 +138,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       setMessages(prev => [...prev, botMessage]);
       saveMessage(currentChatId, botMessage);
       
-      // If talk mode is enabled, read out the response
       if (isTalkModeEnabled) {
         speakText(botResponse);
       }
@@ -171,7 +164,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
         title: "Talk mode disabled",
         description: "AI responses will not be spoken" 
       });
-      // Stop any ongoing speech
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -197,7 +189,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       onFileSelected: async (file) => {
         const uploaded = await uploadFile(file, fileType);
         if (uploaded) {
-          // Add the file to attached files
           setAttachedFiles(prev => [...prev, uploaded]);
           
           toast({
