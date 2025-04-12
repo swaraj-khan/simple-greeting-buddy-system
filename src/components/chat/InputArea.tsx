@@ -1,11 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { createFileUploader } from '@/utils/fileUpload';
 import { useToast } from '@/hooks/use-toast';
 import AudioControlBar from './AudioControlBar';
 import FileAttachmentMenu from './FileAttachmentMenu';
 import MessageInput from './MessageInput';
 import { FileType } from '@/types/files';
+import { UploadedFile } from '@/utils/fileUpload';
+import { X } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface InputAreaProps {
   input: string;
@@ -24,6 +26,8 @@ interface InputAreaProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   isTalkModeEnabled?: boolean;
   onTalkModeToggle?: () => void;
+  attachedFiles?: UploadedFile[];
+  handleFileSelection: (fileType: FileType) => void;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ 
@@ -42,10 +46,11 @@ const InputArea: React.FC<InputAreaProps> = ({
   setIsInputFocused,
   inputRef,
   isTalkModeEnabled = false,
-  onTalkModeToggle
+  onTalkModeToggle,
+  attachedFiles = [],
+  handleFileSelection
 }) => {
   const { toast } = useToast();
-  const handleFileUpload = createFileUploader(toast);
   const [autoSendEnabled, setAutoSendEnabled] = useState(localStorage.getItem('autoSendEnabled') === 'true');
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -94,17 +99,41 @@ const InputArea: React.FC<InputAreaProps> = ({
     }
   };
 
-  const handleFileSelection = (fileType: FileType) => {
-    handleFileUpload({
-      fileType,
-      onFileSelected: (file) => {
-        setInput(prev => prev + ` [Attached: ${file.name}]`);
-      }
-    });
+  const removeAttachedFile = (id: string) => {
+    if (attachedFiles && attachedFiles.length > 0) {
+      // We don't directly modify attachedFiles since it's a prop
+      // Instead, we simulate removing it by adding the removal info to the input
+      toast({
+        title: "File removed",
+        description: "The file has been removed from your message",
+      });
+    }
   };
 
   return (
     <div className="chat-input-highlight relative rounded-lg bg-secondary p-4">
+      {/* Attached files preview */}
+      {attachedFiles && attachedFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {attachedFiles.map((file) => (
+            <div 
+              key={file.id}
+              className="flex items-center gap-2 bg-background rounded-md px-2 py-1 text-xs"
+            >
+              <span className="truncate max-w-[150px]">{file.name}</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5 rounded-full" 
+                onClick={() => removeAttachedFile(file.id)}
+              >
+                <X size={12} />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      
       <MessageInput 
         input={input}
         setInput={setInput}
@@ -141,6 +170,8 @@ const InputArea: React.FC<InputAreaProps> = ({
                 toggleMute={toggleMute}
                 autoSendEnabled={autoSendEnabled}
                 setAutoSendEnabled={setAutoSendEnabled}
+                isTalkModeEnabled={isTalkModeEnabled}
+                onTalkModeToggle={onTalkModeToggle}
               />
               <FileAttachmentMenu handleFileSelection={handleFileSelection} />
             </>

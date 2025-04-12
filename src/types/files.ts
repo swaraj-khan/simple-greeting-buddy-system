@@ -1,12 +1,12 @@
 
-// Define the file types
-export type FileType = 'chart' | 'journal' | 'orders' | 'books';
+export type FileType = 'image' | 'document';
 
-export type FileData = {
+export interface FileData {
   id: string;
   name: string;
   type: FileType;
-  size: string;
-  uploadDate: string;
+  size: number;
   preview?: string;
-};
+  uploadDate: string;
+  url?: string;
+}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ export default function Login() {
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -75,7 +76,9 @@ export default function Login() {
               window.history.replaceState({}, document.title, window.location.pathname);
             }
             
-            navigate('/');
+            // Navigate to the redirect URL or home page
+            const redirectTo = searchParams.get('redirectTo') || '/';
+            navigate(redirectTo);
           }
         } catch (error) {
           console.error('Error handling OAuth redirect:', error);
@@ -93,7 +96,7 @@ export default function Login() {
     };
 
     handleOAuthRedirect();
-  }, [toast, navigate]);
+  }, [toast, navigate, searchParams]);
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
@@ -105,6 +108,10 @@ export default function Login() {
           description: "Invalid email or password",
           variant: "destructive",
         });
+      } else {
+        // Navigate to the redirect URL or home page
+        const redirectTo = searchParams.get('redirectTo') || '/';
+        navigate(redirectTo);
       }
     } catch (error) {
       toast({
@@ -127,7 +134,8 @@ export default function Login() {
   };
 
   if (user) {
-    return <Navigate to="/" />;
+    const redirectTo = searchParams.get('redirectTo') || '/';
+    return <Navigate to={redirectTo} />;
   }
 
   return (
@@ -289,4 +297,4 @@ export default function Login() {
       </div>
     </div>
   );
-}
+};
