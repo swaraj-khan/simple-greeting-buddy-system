@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { FileData, FileType } from '@/types/files';
 
 export interface StackData {
   id: number;
@@ -62,7 +63,43 @@ export const useStacksData = () => {
     }
   ]);
 
-  return { data, setData };
+  // Add the missing properties
+  const [activeTab, setActiveTab] = useState<FileType>('chart');
+  const [files, setFiles] = useState<FileData[]>([]);
+
+  // Filter files based on active tab
+  const filteredFiles = files.filter(file => file.type === activeTab);
+
+  // Handle file upload
+  const handleFileUpload = (fileType: FileType) => {
+    console.log(`Uploading file of type: ${fileType}`);
+    // Simulate file upload - in a real app, this would handle the actual upload
+    const newFile: FileData = {
+      id: `file-${Date.now()}`,
+      name: `New ${fileType} file`,
+      type: fileType,
+      size: '10 KB',
+      uploadDate: new Date().toLocaleDateString(),
+      preview: fileType === 'chart' ? '/placeholder.svg' : undefined
+    };
+    
+    setFiles(prev => [...prev, newFile]);
+  };
+
+  // Handle file delete
+  const handleDeleteFile = (id: string) => {
+    setFiles(prev => prev.filter(file => file.id !== id));
+  };
+
+  return { 
+    data, 
+    setData,
+    activeTab,
+    setActiveTab,
+    filteredFiles,
+    handleFileUpload,
+    handleDeleteFile
+  };
 };
 
 export default useStacksData;
