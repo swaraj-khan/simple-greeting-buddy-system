@@ -1,94 +1,116 @@
 
-import { useState } from 'react';
-import { FileData, FileType } from '@/types/files';
+import { useState, useEffect } from 'react';
+import { FileType } from '@/types/files';
+
+export interface StackFile {
+  id: string;
+  name: string;
+  type: 'pdf' | 'image' | 'document';
+  url: string;
+  createdAt: string;
+  size: number;
+}
 
 export interface StackData {
-  id: number;
+  id: string;
   name: string;
-  value: number;
-  category: string;
-  description?: string;
+  files: StackFile[];
 }
 
 export const useStacksData = () => {
   const [data, setData] = useState<StackData[]>([
     {
-      id: 1,
-      name: 'AAPL',
-      value: 150,
-      category: 'technology',
-      description: 'Apple Inc. - Technology company that designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories.'
+      id: '1',
+      name: 'Research',
+      files: [
+        {
+          id: '1',
+          name: 'Market Analysis.pdf',
+          type: 'pdf',
+          url: '/placeholder.svg',
+          createdAt: '2023-11-10T10:00:00Z',
+          size: 2500000
+        },
+        {
+          id: '2',
+          name: 'Competitor Research.pdf',
+          type: 'pdf',
+          url: '/placeholder.svg',
+          createdAt: '2023-11-09T14:30:00Z',
+          size: 1800000
+        }
+      ]
     },
     {
-      id: 2,
-      name: 'MSFT',
-      value: 300,
-      category: 'technology',
-      description: 'Microsoft Corporation - Technology company that develops, licenses, and supports software, services, devices, and solutions.'
+      id: '2',
+      name: 'Reports',
+      files: [
+        {
+          id: '3',
+          name: 'Q3 Financial Report.pdf',
+          type: 'pdf',
+          url: '/placeholder.svg',
+          createdAt: '2023-10-15T09:00:00Z',
+          size: 3200000
+        }
+      ]
     },
     {
-      id: 3,
-      name: 'GOOGL',
-      value: 2500,
-      category: 'technology',
-      description: 'Alphabet Inc. - Technology company that specializes in Internet-related services and products.'
-    },
-    {
-      id: 4,
-      name: 'AMZN',
-      value: 3000,
-      category: 'consumer',
-      description: 'Amazon.com, Inc. - Online retailer and cloud services provider.'
-    },
-    {
-      id: 5,
-      name: 'TSLA',
-      value: 700,
-      category: 'automotive',
-      description: 'Tesla, Inc. - Automotive and clean energy company.'
-    },
-    {
-      id: 6,
-      name: 'FB',
-      value: 300,
-      category: 'technology',
-      description: 'Meta Platforms, Inc. - Technology company that focuses on social media and virtual reality.'
-    },
-    {
-      id: 7,
-      name: 'NFLX',
-      value: 500,
-      category: 'entertainment',
-      description: 'Netflix, Inc. - Entertainment company that provides streaming media and video-on-demand online.'
+      id: '3',
+      name: 'Images',
+      files: [
+        {
+          id: '4',
+          name: 'Product Mockup.png',
+          type: 'image',
+          url: '/placeholder.svg',
+          createdAt: '2023-11-05T11:20:00Z',
+          size: 1500000
+        }
+      ]
     }
   ]);
+  
+  const [activeTab, setActiveTab] = useState<number>(0);
+  const [filteredFiles, setFilteredFiles] = useState<StackFile[]>([]);
 
-  // Add the missing properties
-  const [activeTab, setActiveTab] = useState<FileType>('chart');
-  const [files, setFiles] = useState<FileData[]>([]);
+  useEffect(() => {
+    if (activeTab === 0) {
+      // All files
+      setFilteredFiles(data.flatMap(stack => stack.files));
+    } else {
+      // Files from specific stack (subtract 1 because first tab is "All")
+      const stackIndex = activeTab - 1;
+      setFilteredFiles(data[stackIndex]?.files || []);
+    }
+  }, [activeTab, data]);
 
-  // Filter files based on active tab
-  const filteredFiles = files.filter(file => file.type === activeTab);
-
-  // Handle file upload
-  const handleFileUpload = (fileType: FileType) => {
-    console.log(`Uploading file of type: ${fileType}`);
-    // Simulate file upload - in a real app, this would handle the actual upload
-    const newFile: FileData = {
-      id: `file-${Date.now().toString()}`, // Convert to string to match the FileData type
-      name: `New ${fileType} file`,
-      type: fileType,
-      size: '10 KB',
-      uploadDate: new Date().toLocaleDateString(),
-      preview: fileType === 'chart' ? '/placeholder.svg' : undefined
+  const handleFileUpload = (file: File, fileType: FileType, stackId: string) => {
+    const newFile: StackFile = {
+      id: Math.random().toString(36).substring(7),
+      name: file.name,
+      type: fileType === 'image' ? 'image' : 'document',
+      url: URL.createObjectURL(file),
+      createdAt: new Date().toISOString(),
+      size: file.size
     };
-    
-    setFiles(prev => [...prev, newFile]);
+
+    setData(prevData => 
+      prevData.map(stack => 
+        stack.id === stackId 
+          ? { ...stack, files: [...stack.files, newFile] } 
+          : stack
+      )
+    );
   };
 
-  // Handle file delete
-  const handleDeleteFile = (id: string) => {
-    setFiles(prev => prev.filter(file => file.id !== id));
+  const handleDeleteFile = (fileId: string) => {
+    setData(prevData => 
+      prevData.map(stack => ({
+        ...stack,
+        files: stack.files.filter(file => file.id !== fileId)
+      }))
+    );
   };
 
   return { 
@@ -101,5 +123,3 @@ export const useStacksData = () => {
     handleDeleteFile
   };
 };
-
-export default useStacksData;

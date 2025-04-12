@@ -1,20 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { usePlaceholders } from '@/hooks/usePlaceholders';
-import MessageList from './chat/MessageList';
-import InputArea from './chat/InputArea';
-import WelcomeHeader from './chat/WelcomeHeader';
-import CollapsedChatButton from './chat/CollapsedChatButton';
 import { speakText } from '@/services/speechService';
-import { useChatHistory, ChatMessage, ChatSession } from '@/hooks/useChatHistory';
+import { useChatHistory, ChatMessage } from '@/hooks/useChatHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFileUpload, UploadedFile } from '@/utils/fileUpload';
 import { FileType } from '@/types/files';
 import { createFileUploader } from '@/utils/fileUploadUtils';
-
-interface ChatInterfaceProps {}
+import ChatMessaging from './chat/ChatMessaging';
+import ChatControls from './chat/ChatControls';
 
 const placeholders = [
   "Ask me about trade validation for HDFC",
@@ -24,17 +20,15 @@ const placeholders = [
   "Analyze market sentiment for IT sector"
 ];
 
-const ChatInterface: React.FC<ChatInterfaceProps> = () => {
+const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isInitial, setIsInitial] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isTalkModeEnabled, setIsTalkModeEnabled] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  
   const { toast } = useToast();
-  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { uploadFile } = useFileUpload();
   
@@ -46,8 +40,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
     saveMessage 
   } = useChatHistory();
 
-  const { isRecording, isMuted, transcript, toggleRecording, toggleMute, clearTranscript } = useSpeechRecognition();
-  const { currentPlaceholder } = usePlaceholders(placeholders, isInputFocused, input, isRecording);
+  const { 
+    isRecording, 
+    isMuted, 
+    transcript, 
+    toggleRecording, 
+    toggleMute, 
+    clearTranscript 
+  } = useSpeechRecognition();
+  
+  const { currentPlaceholder } = usePlaceholders(
+    placeholders, 
+    false, // isInputFocused - we'll pass this from InputArea
+    input, 
+    isRecording
+  );
 
   useEffect(() => {
     if (activeChat) {
@@ -67,13 +74,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       toggleRecording();
     }
 
+    console.log("Sending message, checking for active chat first");
     let currentChatId = activeChat?.id;
+    
     if (!currentChatId) {
+      console.log("No active chat, creating new chat");
       const firstWords = messageContent.split(' ').slice(0, 5).join(' ');
       const chatTitle = `${firstWords}${messageContent.length > firstWords.length ? '...' : ''}`;
       const newChat = await createChat(chatTitle);
+      
       if (newChat) {
+        console.log("New chat created with ID:", newChat.id);
         currentChatId = newChat.id;
+      } else {
+        console.error("Failed to create new chat");
       }
     }
     
@@ -85,6 +99,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       });
       return;
     }
+    
+    console.log("Proceeding with chat ID:", currentChatId);
 
     let finalContent = messageContent;
     if (attachedFiles.length > 0) {
@@ -113,7 +129,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }, 1000);
     }
 
-    await saveMessage(currentChatId, userMessage);
+    const savedMessage = await saveMessage(currentChatId, userMessage);
+    if (!savedMessage) {
+      console.error("Failed to save user message to database");
+    }
     
     setTimeout(() => {
       const botResponse = "Here's your analysis of the market trends you requested. The data shows a bullish pattern with strong support levels.";
@@ -146,9 +165,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
 
   const handleFollowUpClick = (text: string) => {
     setInput(text);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
   };
 
   const handleTalkModeToggle = () => {
@@ -169,18 +185,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }
     }
   };
-
-  const handleSelectChat = (chat: ChatSession) => {
-    selectChat(chat.id);
-  };
   
-  const handleNewChat = async () => {
-    const newChat = await createChat('New conversation');
-    if (newChat) {
-      await selectChat(newChat.id);
-    }
-  };
-
   const handleFileSelection = async (fileType: FileType) => {
     const fileUploader = createFileUploader(toast);
     
@@ -202,41 +207,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
 
   return (
     <div className="relative w-full max-w-4xl mx-auto h-full">
-      <WelcomeHeader isVisible={isInitial} />
+      <ChatControls
+        input={input}
+        setInput={setInput}
+        isInitial={isInitial}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        handleSendMessage={handleSendMessage}
+        transcript={transcript}
+        isRecording={isRecording}
+        toggleRecording={toggleRecording}
+        isMuted={isMuted}
+        toggleMute={toggleMute}
+        placeholders={placeholders}
+        currentPlaceholder={currentPlaceholder}
+        isTalkModeEnabled={isTalkModeEnabled}
+        onTalkModeToggle={handleTalkModeToggle}
+        attachedFiles={attachedFiles}
+        handleFileSelection={handleFileSelection}
+      />
       
-      {isCollapsed ? (
-        <CollapsedChatButton onExpand={() => setIsCollapsed(false)} />
-      ) : (
-        <div className={`${isInitial ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3' : 'fixed bottom-6 left-1/2 -translate-x-1/2'} w-full max-w-2xl px-4 z-10 transition-all duration-500`}>
-          <InputArea 
-            input={input}
-            setInput={setInput}
-            isInitial={isInitial}
-            onSendMessage={handleSendMessage}
-            transcript={transcript}
-            isRecording={isRecording}
-            toggleRecording={toggleRecording}
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-            placeholders={placeholders}
-            currentPlaceholder={currentPlaceholder}
-            isInputFocused={isInputFocused}
-            setIsInputFocused={setIsInputFocused}
-            inputRef={inputRef}
-            isTalkModeEnabled={isTalkModeEnabled}
-            onTalkModeToggle={handleTalkModeToggle}
-            attachedFiles={attachedFiles}
-            handleFileSelection={handleFileSelection}
-          />
-        </div>
-      )}
-      
-      {!isInitial && (
-        <MessageList 
-          messages={messages} 
-          onFollowUpClick={handleFollowUpClick} 
-        />
-      )}
+      <ChatMessaging
+        messages={messages}
+        onFollowUpClick={handleFollowUpClick}
+        isInitial={isInitial}
+      />
     </div>
   );
 };

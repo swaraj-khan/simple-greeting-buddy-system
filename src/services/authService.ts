@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 export const loginWithEmailPassword = async (email: string, password: string) => {
   try {
@@ -35,7 +34,7 @@ export const loginWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${currentUrl}/login`, // Use current origin for proper redirect
+        redirectTo: `${currentUrl}/`, // Redirect to home page after login
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
