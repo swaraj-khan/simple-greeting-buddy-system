@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface GoogleLoginButtonProps {
   disabled: boolean;
@@ -10,10 +11,28 @@ interface GoogleLoginButtonProps {
 
 const GoogleLoginButton = ({ disabled }: GoogleLoginButtonProps) => {
   const { loginWithGoogle, isLoading } = useAuth();
+  const { toast } = useToast();
 
   const handleGoogleLogin = async () => {
-    console.log('Starting Google login process...');
-    await loginWithGoogle();
+    try {
+      console.log('Starting Google login process...');
+      const result = await loginWithGoogle();
+      
+      if (!result) {
+        toast({
+          title: "Sign In Failed",
+          description: "Failed to start Google sign-in process",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      toast({
+        title: "Sign In Failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

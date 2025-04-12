@@ -75,7 +75,7 @@ export const useStacksData = () => {
     console.log(`Uploading file of type: ${fileType}`);
     // Simulate file upload - in a real app, this would handle the actual upload
     const newFile: FileData = {
-      id: `file-${Date.now()}`,
+      id: `file-${Date.now().toString()}`, // Convert to string to match the FileData type
       name: `New ${fileType} file`,
       type: fileType,
       size: '10 KB',

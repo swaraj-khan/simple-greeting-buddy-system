@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 export const loginWithEmailPassword = async (email: string, password: string) => {
   try {
@@ -16,25 +16,26 @@ export const loginWithEmailPassword = async (email: string, password: string) =>
 
     if (error) {
       console.error('Login error:', error);
-      return { success: false };
+      return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
     console.error('Login error:', error);
-    return { success: false };
+    return { success: false, error };
   }
 };
 
 export const loginWithGoogle = async () => {
   try {
     // Log the current URL to help with debugging
-    console.log('Current URL:', window.location.origin);
+    const currentUrl = window.location.origin;
+    console.log('Current URL for redirect:', currentUrl);
     
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${currentUrl}/login`, // Use current origin for proper redirect
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -44,22 +45,13 @@ export const loginWithGoogle = async () => {
 
     if (error) {
       console.error('Google login error:', error);
-      toast({
-        title: "Sign In Failed",
-        description: error.message,
-        variant: "destructive",
-      });
       return false;
     }
     
+    // No need to show a toast here as user will be redirected to Google
     return true;
   } catch (error) {
     console.error('Google login error:', error);
-    toast({
-      title: "Sign In Failed",
-      description: "An unexpected error occurred",
-      variant: "destructive",
-    });
     return false;
   }
 };
@@ -70,11 +62,6 @@ export const logout = async () => {
     return true;
   } catch (error) {
     console.error('Logout error:', error);
-    toast({
-      title: "Logout Failed",
-      description: "An error occurred while signing out",
-      variant: "destructive",
-    });
     return false;
   }
 };

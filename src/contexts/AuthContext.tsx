@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { useUserProfile, UserProfile } from '@/hooks/useUserProfile';
-import { loginWithEmailPassword, loginWithGoogle, logout as authLogout } from '@/services/authService';
+import { loginWithEmailPassword, loginWithGoogle as authLoginWithGoogle, logout as authLogout } from '@/services/authService';
+import { useToast } from '@/hooks/use-toast';
 
 export type UserWithProfile = User & {
   profile?: UserProfile;
@@ -25,50 +26,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { getUserProfile } = useUserProfile();
+  const { toast } = useToast();
 
   // Set up auth state listener and check for existing session
   useEffect(() => {
     // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('Auth state changed:', event, currentSession ? 'session exists' : 'no session');
         setSession(currentSession);
         
         if (currentSession?.user) {
-          const profile = await getUserProfile(currentSession.user.id);
-          
-          // Combine user with profile data
-          const userWithProfile = {
-            ...currentSession.user,
-            profile: profile || undefined
-          };
-          
-          setUser(userWithProfile);
+          // Defer profile fetching to avoid deadlock
+          setTimeout(async () => {
+            try {
+              const profile = await getUserProfile(currentSession.user.id);
+              
+              // Combine user with profile data
+              const userWithProfile = {
+                ...currentSession.user,
+                profile: profile || undefined
+              };
+              
+              setUser(userWithProfile);
+            } catch (err) {
+              console.error('Error fetching profile:', err);
+              // Still set the user even if profile fetch fails
+              setUser(currentSession.user as UserWithProfile);
+            }
+            setIsLoading(false);
+          }, 0);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
     // Then check for existing session
     const initializeAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (currentSession?.user) {
-        const profile = await getUserProfile(currentSession.user.id);
+      try {
+        console.log('Checking for existing session...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        // Combine user with profile data
-        const userWithProfile = {
-          ...currentSession.user,
-          profile: profile || undefined
-        };
-        
-        setUser(userWithProfile);
-        setSession(currentSession);
+        if (currentSession?.user) {
+          console.log('Session found for user:', currentSession.user.email);
+          
+          // Defer profile fetching
+          setTimeout(async () => {
+            try {
+              const profile = await getUserProfile(currentSession.user.id);
+              
+              // Combine user with profile data
+              const userWithProfile = {
+                ...currentSession.user,
+                profile: profile || undefined
+              };
+              
+              setUser(userWithProfile);
+              setSession(currentSession);
+            } catch (err) {
+              console.error('Error fetching profile:', err);
+              // Still set the user even if profile fetch fails
+              setUser(currentSession.user as UserWithProfile);
+              setSession(currentSession);
+            }
+            setIsLoading(false);
+          }, 0);
+        } else {
+          console.log('No session found');
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     initializeAuth();
@@ -85,27 +117,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await loginWithEmailPassword(email, password);
       
       if (!result.success) {
+        toast({
+          title: "Login Failed",
+          description: result.error?.message || "Invalid email or password",
+          variant: "destructive",
+        });
         setIsLoading(false);
         return false;
       }
       
       if (result.hardcodedUser) {
-        const user = { 
+        const hardcodedUser = { 
           email, 
+          id: 'dev-user',
           profile: {
             full_name: 'Abhinandan',
             username: 'abhinandan'
           }
         } as UserWithProfile;
-        setUser(user);
+        setUser(hardcodedUser);
+        
+        toast({
+          title: "Success",
+          description: "You have successfully signed in",
+        });
       }
-      
       // For non-hardcoded users, the auth listener will handle setting the user
       
       setIsLoading(false);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      toast({
+        title: "Login Failed",
+        description: error?.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return false;
+    }
+  };
+
+  const loginWithGoogle = async (): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const result = await authLoginWithGoogle();
+      if (!result) {
+        setIsLoading(false);
+      }
+      return result;
+    } catch (error) {
+      console.error('Google login error:', error);
       setIsLoading(false);
       return false;
     }
@@ -118,6 +180,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
     } catch (error) {
       console.error('Logout error:', error);
+      toast({
+        title: "Logout Failed",
+        description: "An error occurred while signing out",
+        variant: "destructive",
+      });
     }
   };
 

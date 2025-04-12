@@ -11,28 +11,52 @@ import { useHandleOAuthRedirect } from '@/utils/authRedirectUtils';
 export default function Login() {
   const { user } = useAuth();
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
+  const [redirectProcessed, setRedirectProcessed] = useState(false);
   const { handleOAuthRedirect } = useHandleOAuthRedirect();
   
   // Debug information
   useEffect(() => {
-    console.log('Current URL:', window.location.href);
-    console.log('Origin:', window.location.origin);
-  }, []);
+    console.log('Login page loaded, current URL:', window.location.href);
+    console.log('User state:', user);
+  }, [user]);
 
   // Handle OAuth redirect
   useEffect(() => {
+    // Only process once
+    if (redirectProcessed) return;
+    
     const processOAuth = async () => {
       setIsProcessingOAuth(true);
-      const result = await handleOAuthRedirect();
-      if (!result) {
+      try {
+        // Process redirect and get result
+        const result = await handleOAuthRedirect();
+        setRedirectProcessed(true);
+        
+        if (!result) {
+          // No redirect or failed auth
+          setIsProcessingOAuth(false);
+        }
+      } catch (error) {
+        console.error('Error in OAuth redirect processing:', error);
         setIsProcessingOAuth(false);
+        setRedirectProcessed(true);
       }
     };
 
-    processOAuth();
-  }, [handleOAuthRedirect]);
+    // Check if we need to process an OAuth redirect
+    if (
+      window.location.href.includes('#access_token') || 
+      window.location.href.includes('?code=') || 
+      window.location.href.includes('#error=')
+    ) {
+      processOAuth();
+    } else {
+      setRedirectProcessed(true);
+    }
+  }, [handleOAuthRedirect, redirectProcessed]);
 
-  if (user) {
+  // Redirect to home if user is logged in
+  if (user && !isProcessingOAuth) {
     return <Navigate to="/" />;
   }
 

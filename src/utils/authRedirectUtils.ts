@@ -12,7 +12,8 @@ export const useHandleOAuthRedirect = () => {
     const url = window.location.href;
     console.log('Checking for OAuth redirect in URL:', url);
     
-    if (url.includes('#access_token') || url.includes('?code=')) {
+    // Check if we have a hash or code in the URL (signs of a redirect)
+    if (url.includes('#access_token') || url.includes('?code=') || url.includes('#error=')) {
       console.log('OAuth redirect detected');
       
       try {
@@ -28,7 +29,10 @@ export const useHandleOAuthRedirect = () => {
             variant: "destructive",
           });
           return false;
-        } else {
+        } 
+        
+        // If we have session data, it means authentication was successful
+        if (data.session) {
           // Session will be picked up by the auth listener
           toast({
             title: "Success",
@@ -44,6 +48,23 @@ export const useHandleOAuthRedirect = () => {
           const redirectTo = searchParams.get('redirectTo') || '/';
           navigate(redirectTo);
           return true;
+        } else {
+          // This case happens when there's an error in the hash but no session
+          const hashParams = new URLSearchParams(
+            window.location.hash.substring(1) // Remove the # character
+          );
+          const errorMessage = hashParams.get('error_description') || 'Authentication failed';
+          console.error('Authentication error from hash:', errorMessage);
+          toast({
+            title: "Authentication Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          // Clean up the URL
+          if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          return false;
         }
       } catch (error) {
         console.error('Error handling OAuth redirect:', error);

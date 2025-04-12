@@ -31,7 +31,10 @@ export const useChatHistory = () => {
 
   // Load all chats for the current user
   const loadChats = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -107,7 +110,21 @@ export const useChatHistory = () => {
 
   // Create a new chat session
   const createChat = async (title: string): Promise<ChatSession | null> => {
-    if (!user) return null;
+    // Handle case when there is no user but we're in dev mode with hardcoded user
+    if (!user && !user?.id) {
+      // Create a mock chat session for development
+      const mockChat: ChatSession = {
+        id: `mock-${Date.now()}`,
+        title: title || 'New chat',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      };
+      
+      setChats(prev => [mockChat, ...prev]);
+      setActiveChat(mockChat);
+      return mockChat;
+    }
 
     try {
       const { data, error } = await supabase
@@ -132,6 +149,7 @@ export const useChatHistory = () => {
       };
       
       setChats(prev => [newChat, ...prev]);
+      setActiveChat(newChat);
       return newChat;
     } catch (error) {
       console.error('Error creating chat:', error);
@@ -145,7 +163,21 @@ export const useChatHistory = () => {
   };
 
   // Save a message to a chat session
-  const saveMessage = async (chatId: string, message: Omit<ChatMessage, 'id'>) => {
+  const saveMessage = async (chatId: string, message: ChatMessage) => {
+    // For mock chats (development without auth)
+    if (chatId.startsWith('mock-')) {
+      // Just update the local state
+      setActiveChat(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          messages: [...prev.messages, message],
+          updatedAt: new Date().toISOString()
+        };
+      });
+      return message;
+    }
+
     if (!user) return null;
 
     try {
@@ -216,6 +248,16 @@ export const useChatHistory = () => {
 
   // Set the active chat and load its messages
   const selectChat = async (chatId: string) => {
+    // For mock chats (development without auth)
+    if (chatId.startsWith('mock-')) {
+      const chat = chats.find(c => c.id === chatId);
+      if (chat) {
+        setActiveChat(chat);
+        return chat;
+      }
+      return null;
+    }
+    
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return null;
     
@@ -232,6 +274,19 @@ export const useChatHistory = () => {
 
   // Update chat title
   const updateChatTitle = async (chatId: string, title: string) => {
+    // For mock chats (development without auth)
+    if (chatId.startsWith('mock-')) {
+      setChats(prev => prev.map(chat => 
+        chat.id === chatId ? { ...chat, title } : chat
+      ));
+      
+      if (activeChat && activeChat.id === chatId) {
+        setActiveChat(prev => prev ? { ...prev, title } : null);
+      }
+      
+      return true;
+    }
+
     if (!user) return false;
 
     try {
@@ -262,6 +317,17 @@ export const useChatHistory = () => {
 
   // Delete a chat
   const deleteChat = async (chatId: string) => {
+    // For mock chats (development without auth)
+    if (chatId.startsWith('mock-')) {
+      setChats(prev => prev.filter(chat => chat.id !== chatId));
+      
+      if (activeChat && activeChat.id === chatId) {
+        setActiveChat(null);
+      }
+      
+      return true;
+    }
+
     if (!user) return false;
 
     try {
