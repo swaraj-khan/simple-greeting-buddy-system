@@ -80,6 +80,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
       isUser: true,
     });
     
+    if (!userMessage) {
+      return; // Exit if message creation failed
+    }
+    
     setInput('');
     clearTranscript();
     
@@ -143,12 +147,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
     }
   };
 
-  // Start a new chat if none is active
+  // Start a new chat if none is active and user is logged in
   useEffect(() => {
-    if (user && !isInitial && !currentChatId) {
+    if (user && !isInitial && !currentChatId && currentChatMessages.length === 0) {
+      // Only create new chat if user is authenticated
       createNewChat();
     }
-  }, [user, isInitial, currentChatId]);
+  }, [user, isInitial, currentChatId, currentChatMessages.length]);
 
   return (
     <div className="relative w-full max-w-4xl mx-auto h-full">

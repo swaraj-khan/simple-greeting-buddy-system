@@ -108,24 +108,34 @@ const Header = () => {
                 <div className="font-semibold">My Account</div>
                 {user && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {user.profile?.full_name || user.email}
+                    {user.email}
                   </div>
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <User size={16} /> Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <CreditCard size={16} /> Billing
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="flex items-center gap-2 cursor-pointer text-red-500"
-                onClick={logout}
-              >
-                <LogOut size={16} /> Log out
-              </DropdownMenuItem>
+              {user ? (
+                <>
+                  <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                    <User size={16} /> Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                    <CreditCard size={16} /> Billing
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="flex items-center gap-2 cursor-pointer text-red-500"
+                    onClick={logout}
+                  >
+                    <LogOut size={16} /> Log out
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <a href="/login" className="flex items-center gap-2">
+                    <LogOut size={16} /> Sign In
+                  </a>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

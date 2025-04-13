@@ -69,7 +69,10 @@ export const useChatHistory = () => {
 
   // Fetch chat history
   const fetchChatHistory = async () => {
-    if (!user) return;
+    if (!user || !user.id) {
+      setChatHistory([]);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -104,10 +107,16 @@ export const useChatHistory = () => {
 
   // Create new chat
   const createNewChat = async (title: string = 'New Chat') => {
-    if (!user) return null;
+    if (!user || !user.id) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please log in to create new chats',
+        variant: 'destructive'
+      });
+      return null;
+    }
     
     try {
-      // Explicitly include the user_id in the insert operation
       const { data, error } = await supabase
         .from('chat_history')
         .insert([{ 
@@ -120,6 +129,7 @@ export const useChatHistory = () => {
       if (error) throw error;
       
       setCurrentChatId(data.id);
+      setCurrentChatMessages([]);
       fetchChatHistory();
       return data.id;
     } catch (error) {
@@ -135,7 +145,7 @@ export const useChatHistory = () => {
 
   // Load chat session
   const loadChatSession = async (chatId: string) => {
-    if (!user) return [];
+    if (!user || !user.id) return [];
     
     setCurrentChatId(chatId);
     try {
@@ -172,19 +182,28 @@ export const useChatHistory = () => {
 
   // Add message to current chat
   const addMessageToChat = async (message: Omit<ChatMessage, 'id' | 'createdAt'>) => {
-    if (!user) return null;
+    if (!user || !user.id) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please log in to send messages',
+        variant: 'destructive'
+      });
+      return null;
+    }
     
-    if (!currentChatId) {
+    let chatId = currentChatId;
+    
+    if (!chatId) {
       const chatTitle = message.isUser ? message.content.substring(0, 30) : 'New Chat';
-      const newChatId = await createNewChat(chatTitle);
-      if (!newChatId) return null;
+      chatId = await createNewChat(chatTitle);
+      if (!chatId) return null;
     }
     
     try {
       const { data, error } = await supabase
         .from('chat_messages')
         .insert([{
-          chat_id: currentChatId,
+          chat_id: chatId,
           content: message.content,
           is_user: message.isUser,
           keywords: message.keywords || [],
@@ -221,7 +240,7 @@ export const useChatHistory = () => {
 
   // Update chat title
   const updateChatTitle = async (chatId: string, newTitle: string) => {
-    if (!user) return false;
+    if (!user || !user.id) return false;
     
     try {
       const { error } = await supabase
@@ -247,7 +266,7 @@ export const useChatHistory = () => {
 
   // Delete chat
   const deleteChat = async (chatId: string) => {
-    if (!user) return false;
+    if (!user || !user.id) return false;
     
     try {
       // First delete all messages in the chat
@@ -287,7 +306,7 @@ export const useChatHistory = () => {
 
   // Fetch chat history on mount and when user changes
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchChatHistory();
     } else {
       // Clear the state when user is not authenticated
