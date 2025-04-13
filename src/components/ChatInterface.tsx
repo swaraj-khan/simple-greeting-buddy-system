@@ -60,6 +60,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
     const messageContent = input.trim() || transcript.trim();
     if (!messageContent) return;
     
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to send messages",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // If not in talk mode, stop recording after sending the message
     if (isRecording && !isTalkModeEnabled) {
       toggleRecording();

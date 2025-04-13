@@ -20,21 +20,37 @@ import {
 import { HistorySidebar } from './HistorySidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatHistory } from '@/hooks/useChatHistory';
+import { useToast } from '@/hooks/use-toast';
 
 const Header = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { logout, user } = useAuth();
   const { createNewChat } = useChatHistory();
+  const { toast } = useToast();
   
   const handleNewChat = async () => {
-    await createNewChat();
-    // Close the history panel after creating a new chat
-    setHistoryOpen(false);
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create a new chat",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newChatId = await createNewChat();
+    if (newChatId) {
+      // Dispatch event to notify other components about the new chat
+      window.dispatchEvent(new CustomEvent('select-chat', { detail: newChatId }));
+      // Close the history panel after creating a new chat
+      setHistoryOpen(false);
+    }
   };
   
   const handleSelectChat = (chatId: string) => {
-    // This is where we would handle chat selection
-    // For now, just close the panel
+    // Dispatch event to notify other components about the selected chat
+    window.dispatchEvent(new CustomEvent('select-chat', { detail: chatId }));
+    // Close the panel
     setHistoryOpen(false);
   };
   
