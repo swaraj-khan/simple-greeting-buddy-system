@@ -51,12 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Set up auth state listener and check for existing session
   useEffect(() => {
+    console.log("Setting up auth state listener");
+
     // First set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession ? "session exists" : "no session");
+        
         setSession(currentSession);
         
         if (currentSession?.user) {
+          console.log("User authenticated:", currentSession.user.email);
           const profile = await getUserProfile(currentSession.user.id);
           
           // Combine user with profile data
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setUser(userWithProfile);
         } else {
+          console.log("No user in session");
           setUser(null);
         }
         
@@ -76,9 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Then check for existing session
     const initializeAuth = async () => {
+      console.log("Initializing auth state");
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
       if (currentSession?.user) {
+        console.log("Found existing session for user:", currentSession.user.email);
         const profile = await getUserProfile(currentSession.user.id);
         
         // Combine user with profile data
@@ -89,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setUser(userWithProfile);
         setSession(currentSession);
+      } else {
+        console.log("No existing session found");
       }
       
       setIsLoading(false);
@@ -97,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     return () => {
+      console.log("Cleaning up auth state listener");
       subscription.unsubscribe();
     };
   }, []);
@@ -105,16 +116,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
+      console.log("Attempting login for:", email);
+      
       // For testing, check hardcoded credentials
       if (email === 'dev@draconic.ai' && password === 'babydragon') {
-        const user = { 
+        console.log("Using hardcoded credentials for development");
+        const mockUser = { 
+          id: 'dev-user-id',
           email, 
           profile: {
             full_name: 'Abhinandan',
             username: 'abhinandan'
           }
         } as UserWithProfile;
-        setUser(user);
+        
+        setUser(mockUser);
+        
+        // Create a mock session
+        const mockSession = {
+          access_token: 'mock-token',
+          refresh_token: 'mock-refresh-token',
+          user: mockUser,
+          expires_at: Date.now() + 3600 * 1000,
+        } as Session;
+        
+        setSession(mockSession);
+        
         setIsLoading(false);
         return true;
       }
@@ -129,8 +156,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
         return false;
       }
-
+      
+      console.log("Login successful:", data.user?.email);
       // Profile data will be fetched by the auth listener
+      
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -182,9 +211,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async (): Promise<void> => {
     try {
+      console.log("Logging out user");
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
+      console.log("User logged out");
     } catch (error) {
       console.error('Logout error:', error);
       toast({

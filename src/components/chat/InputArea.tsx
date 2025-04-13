@@ -6,6 +6,8 @@ import AudioControlBar from './AudioControlBar';
 import FileAttachmentMenu from './FileAttachmentMenu';
 import MessageInput from './MessageInput';
 import { FileType } from '@/types/files';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { X } from 'lucide-react';
 
 interface InputAreaProps {
   input: string;
@@ -24,6 +26,7 @@ interface InputAreaProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   isTalkModeEnabled?: boolean;
   onTalkModeToggle?: () => void;
+  authError?: boolean;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ 
@@ -42,12 +45,23 @@ const InputArea: React.FC<InputAreaProps> = ({
   setIsInputFocused,
   inputRef,
   isTalkModeEnabled = false,
-  onTalkModeToggle
+  onTalkModeToggle,
+  authError = false
 }) => {
   const { toast } = useToast();
   const handleFileUpload = createFileUploader(toast);
   const [autoSendEnabled, setAutoSendEnabled] = useState(localStorage.getItem('autoSendEnabled') === 'true');
+  const [showAuthError, setShowAuthError] = useState(false);
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update showAuthError when authError changes
+  useEffect(() => {
+    if (authError) {
+      setShowAuthError(true);
+    } else {
+      setShowAuthError(false);
+    }
+  }, [authError]);
 
   useEffect(() => {
     if (isRecording && transcript && !isMuted) {
@@ -105,6 +119,19 @@ const InputArea: React.FC<InputAreaProps> = ({
 
   return (
     <div className="chat-input-highlight relative rounded-lg bg-secondary p-4">
+      {showAuthError && (
+        <Alert variant="destructive" className="mb-4 flex justify-between items-center">
+          <AlertDescription>
+            Please log in to send messages
+          </AlertDescription>
+          <button 
+            onClick={() => setShowAuthError(false)}
+            className="p-1 hover:bg-destructive/20 rounded-full"
+          >
+            <X size={16} />
+          </button>
+        </Alert>
+      )}
       <MessageInput 
         input={input}
         setInput={setInput}

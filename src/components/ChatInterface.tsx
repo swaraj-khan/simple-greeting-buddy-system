@@ -29,10 +29,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isTalkModeEnabled, setIsTalkModeEnabled] = useState(false);
+  const [authError, setAuthError] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   const { isRecording, isMuted, transcript, toggleRecording, toggleMute, clearTranscript } = useSpeechRecognition();
   const { currentPlaceholder } = usePlaceholders(placeholders, isInputFocused, input, isRecording);
@@ -45,6 +46,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
     addMessageToChat,
     createNewChat
   } = useChatHistory();
+
+  // Reset auth error when user changes
+  useEffect(() => {
+    if (user) {
+      setAuthError(false);
+    }
+  }, [user]);
 
   // Handle loading the selected chat
   useEffect(() => {
@@ -60,7 +68,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
     const messageContent = input.trim() || transcript.trim();
     if (!messageContent) return;
     
-    if (!user) {
+    // Check if user is authenticated
+    if (!user || !session) {
+      setAuthError(true);
       toast({
         title: "Authentication required",
         description: "Please log in to send messages",
@@ -68,6 +78,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
       });
       return;
     }
+    
+    // Auth is valid, reset error flag if it was set
+    setAuthError(false);
     
     // If not in talk mode, stop recording after sending the message
     if (isRecording && !isTalkModeEnabled) {
@@ -151,6 +164,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
   useEffect(() => {
     if (user && !isInitial && !currentChatId && currentChatMessages.length === 0) {
       // Only create new chat if user is authenticated
+      console.log("Creating new chat for user:", user.id);
       createNewChat();
     }
   }, [user, isInitial, currentChatId, currentChatMessages.length]);
@@ -180,6 +194,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
             inputRef={inputRef}
             isTalkModeEnabled={isTalkModeEnabled}
             onTalkModeToggle={handleTalkModeToggle}
+            authError={authError}
           />
         </div>
       )}
