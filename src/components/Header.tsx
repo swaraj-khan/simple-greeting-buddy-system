@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Clock, LogOut, CreditCard } from 'lucide-react';
+import { User, Clock, LogOut, CreditCard, PlusCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { 
   DropdownMenu, 
@@ -19,10 +19,24 @@ import {
 } from "./ui/sheet";
 import { HistorySidebar } from './HistorySidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatHistory } from '@/hooks/useChatHistory';
 
 const Header = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { logout, user } = useAuth();
+  const { createNewChat } = useChatHistory();
+  
+  const handleNewChat = async () => {
+    await createNewChat();
+    // Close the history panel after creating a new chat
+    setHistoryOpen(false);
+  };
+  
+  const handleSelectChat = (chatId: string) => {
+    // This is where we would handle chat selection
+    // For now, just close the panel
+    setHistoryOpen(false);
+  };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 py-4 px-6 bg-background/90 backdrop-blur-md border-b border-border">
@@ -36,6 +50,17 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* New Chat Button */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            onClick={handleNewChat}
+          >
+            <PlusCircle size={18} />
+            <span className="hidden sm:inline">New Chat</span>
+          </Button>
+          
           {/* History Button */}
           <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
             <SheetTrigger asChild>
@@ -52,7 +77,7 @@ const Header = () => {
               <SheetHeader>
                 <SheetTitle>History</SheetTitle>
               </SheetHeader>
-              <HistorySidebar />
+              <HistorySidebar onSelectChat={handleSelectChat} />
             </SheetContent>
           </Sheet>
           

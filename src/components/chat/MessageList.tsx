@@ -1,18 +1,10 @@
 
 import React, { useRef, useEffect } from 'react';
 import ResponseCard from '../ResponseCard';
-
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  keywords?: string[];
-  summary?: string[];
-  followUps?: string[];
-}
+import { ChatMessage } from '@/hooks/useChatHistory';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: ChatMessage[];
   onFollowUpClick: (text: string) => void;
 }
 

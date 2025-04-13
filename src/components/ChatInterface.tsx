@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -8,17 +8,12 @@ import MessageList from './chat/MessageList';
 import InputArea from './chat/InputArea';
 import WelcomeHeader from './chat/WelcomeHeader';
 import CollapsedChatButton from './chat/CollapsedChatButton';
+import { useChatHistory, ChatMessage } from '@/hooks/useChatHistory';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  keywords?: string[];
-  summary?: string[];
-  followUps?: string[];
+interface ChatInterfaceProps {
+  selectedChatId?: string;
 }
-
-interface ChatInterfaceProps {}
 
 const placeholders = [
   "Ask me about trade validation for HDFC",
@@ -28,8 +23,7 @@ const placeholders = [
   "Analyze market sentiment for IT sector"
 ];
 
-const ChatInterface: React.FC<ChatInterfaceProps> = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedChatId }) => {
   const [input, setInput] = useState('');
   const [isInitial, setIsInitial] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -38,11 +32,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   
   const { isRecording, isMuted, transcript, toggleRecording, toggleMute, clearTranscript } = useSpeechRecognition();
   const { currentPlaceholder } = usePlaceholders(placeholders, isInputFocused, input, isRecording);
+  
+  const { 
+    currentChatId, 
+    currentChatMessages, 
+    setCurrentChatId,
+    loadChatSession,
+    addMessageToChat,
+    createNewChat
+  } = useChatHistory();
 
-  const handleSendMessage = () => {
+  // Handle loading the selected chat
+  useEffect(() => {
+    if (selectedChatId && selectedChatId !== currentChatId) {
+      loadChatSession(selectedChatId);
+      if (isInitial) {
+        setIsInitial(false);
+      }
+    }
+  }, [selectedChatId, currentChatId]);
+
+  const handleSendMessage = async () => {
     const messageContent = input.trim() || transcript.trim();
     if (!messageContent) return;
     
@@ -51,13 +65,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       toggleRecording();
     }
     
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    // Add user message
+    const userMessage = await addMessageToChat({
       content: messageContent,
       isUser: true,
-    };
+    });
     
-    setMessages(prev => [...prev, userMessage]);
     setInput('');
     clearTranscript();
     
@@ -70,9 +83,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }, 1000);
     }
     
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
+    // Simulate bot response
+    setTimeout(async () => {
+      await addMessageToChat({
         content: "Here's your analysis",
         isUser: false,
         keywords: ["HDFC", "Resistance", "Bullish", "Support"],
@@ -86,9 +99,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
           "What's the target price?",
           "Compare with sector performance"
         ]
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
+      });
 
       // If talk mode is enabled, simulate text-to-speech for the bot response
       if (isTalkModeEnabled && isRecording) {
@@ -123,6 +134,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
     }
   };
 
+  // Start a new chat if none is active
+  useEffect(() => {
+    if (user && !isInitial && !currentChatId) {
+      createNewChat();
+    }
+  }, [user, isInitial, currentChatId]);
+
   return (
     <div className="relative w-full max-w-4xl mx-auto h-full">
       <WelcomeHeader isVisible={isInitial} />
@@ -154,7 +172,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       
       {!isInitial && (
         <MessageList 
-          messages={messages} 
+          messages={currentChatMessages} 
           onFollowUpClick={handleFollowUpClick} 
         />
       )}
