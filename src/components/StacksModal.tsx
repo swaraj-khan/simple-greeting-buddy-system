@@ -6,6 +6,7 @@ import CloseButton from './CloseButton';
 import ModalHeader from './ModalHeader';
 import StacksContent from './stacks/StacksContent';
 import { useStacksData } from './stacks/useStacksData';
+import { FileType } from '@/types/files';
 
 interface StacksModalProps {
   isOpen: boolean;
@@ -22,6 +23,11 @@ const StacksModal = ({ isOpen, onClose }: StacksModalProps) => {
     handleDeleteFile
   } = useStacksData();
   
+  // Create properly typed handler for setActiveTab
+  const handleTabChange = (tab: FileType) => {
+    setActiveTab(tab);
+  };
+
   return (
     <>
       {/* Close button outside Dialog */}
@@ -45,7 +51,7 @@ const StacksModal = ({ isOpen, onClose }: StacksModalProps) => {
           
           <StacksContent 
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleTabChange}
             filteredFiles={filteredFiles}
             handleDeleteFile={handleDeleteFile}
             handleFileUpload={handleFileUpload}
