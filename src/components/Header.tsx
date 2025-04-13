@@ -19,32 +19,10 @@ import {
 } from "./ui/sheet";
 import { HistorySidebar } from './HistorySidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useChatHistory } from '@/hooks/useChatHistory';
 
-interface HeaderProps {
-  onSelectChat?: (chatId: string) => void;
-  onNewChat?: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ onSelectChat, onNewChat }) => {
+const Header = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { logout, user } = useAuth();
-  const { selectChat, activeChat } = useChatHistory();
-  
-  const handleSelectChat = async (chat: any) => {
-    if (onSelectChat) {
-      await selectChat(chat.id);
-      onSelectChat(chat.id);
-      setHistoryOpen(false);
-    }
-  };
-  
-  const handleNewChat = () => {
-    if (onNewChat) {
-      onNewChat();
-      setHistoryOpen(false);
-    }
-  };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 py-4 px-6 bg-background/90 backdrop-blur-md border-b border-border">
@@ -74,10 +52,7 @@ const Header: React.FC<HeaderProps> = ({ onSelectChat, onNewChat }) => {
               <SheetHeader>
                 <SheetTitle>History</SheetTitle>
               </SheetHeader>
-              <HistorySidebar 
-                onSelectChat={handleSelectChat} 
-                onNewChat={handleNewChat}
-              />
+              <HistorySidebar />
             </SheetContent>
           </Sheet>
           

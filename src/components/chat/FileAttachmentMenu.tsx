@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Upload, Image, FileText } from 'lucide-react';
+import { Upload, Image, FileText, BookOpen } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -28,11 +28,17 @@ const FileAttachmentMenu: React.FC<FileAttachmentMenuProps> = ({ handleFileSelec
       <DropdownMenuContent align="start">
         <DropdownMenuLabel>Select file type</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleFileSelection('image')} className="cursor-pointer">
-          <Image size={16} className="mr-2" /> Image
+        <DropdownMenuItem onClick={() => handleFileSelection('chart')} className="cursor-pointer">
+          <Image size={16} className="mr-2" /> Trading Chart
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleFileSelection('document')} className="cursor-pointer">
-          <FileText size={16} className="mr-2" /> Document (PDF)
+        <DropdownMenuItem onClick={() => handleFileSelection('journal')} className="cursor-pointer">
+          <FileText size={16} className="mr-2" /> Trading Journal
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleFileSelection('orders')} className="cursor-pointer">
+          <FileText size={16} className="mr-2" /> Past Orders
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleFileSelection('books')} className="cursor-pointer">
+          <BookOpen size={16} className="mr-2" /> Books
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -34,7 +34,7 @@ const FileCard = ({ file, onDelete, showPreview = false }: FileCardProps) => {
         <CardContent className="p-3">
           <FileDetails 
             name={file.name}
-            size={file.size.toString()} // Convert number to string
+            size={file.size}
             uploadDate={file.uploadDate}
             onDelete={onDelete}
           />
