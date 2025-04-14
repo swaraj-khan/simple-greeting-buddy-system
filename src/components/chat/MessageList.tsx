@@ -1,7 +1,6 @@
-
 import React, { useRef, useEffect } from 'react';
 import ResponseCard from '../ResponseCard';
-import { ChatMessage } from '@/hooks/useChatHistory';
+import { ChatMessage } from '@/types/chat';
 
 interface MessageListProps {
   messages: ChatMessage[];

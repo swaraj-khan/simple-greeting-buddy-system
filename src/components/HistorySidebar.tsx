@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { useChatHistory } from '@/hooks/useChatHistory';
-import { ChatHistoryGroup } from './history/ChatHistoryGroup';
+import { ChatHistoryGroup } from '@/types/chat';
+import { ChatHistoryGroup as ChatHistoryGroupComponent } from './history/ChatHistoryGroup';
 import { ChatHistoryFooter } from './history/ChatHistoryFooter';
 import { PlusCircle } from 'lucide-react';
 import { Button } from './ui/button';

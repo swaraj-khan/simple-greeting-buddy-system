@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { CalendarDays } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { ChatItem, ChatHistoryItem } from './ChatHistoryItem';
+import { ChatHistoryItem } from './ChatHistoryItem';
+import { ChatItem } from './ChatHistoryItem';
 
 interface ChatHistoryGroupProps {
   group: {

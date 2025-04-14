@@ -8,7 +8,8 @@ import MessageList from './chat/MessageList';
 import InputArea from './chat/InputArea';
 import WelcomeHeader from './chat/WelcomeHeader';
 import CollapsedChatButton from './chat/CollapsedChatButton';
-import { useChatHistory, ChatMessage } from '@/hooks/useChatHistory';
+import { useChatHistory } from '@/hooks/useChatHistory';
+import { ChatMessage } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatInterfaceProps {

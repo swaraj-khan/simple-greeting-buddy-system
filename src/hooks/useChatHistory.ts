@@ -1,31 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
+import { ChatMessage, ChatSession, ChatHistoryGroup } from '@/types/chat';
+import * as chatService from '@/services/chatService';
+import { supabase } from '@/integrations/supabase/client';
 
-export interface ChatMessage {
-  id: string;
-  content: string;
-  isUser: boolean;
-  keywords?: string[];
-  summary?: string[];
-  followUps?: string[];
-  createdAt: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  time: string;
-  createdAt: string;
-}
-
-export interface ChatHistoryGroup {
-  date: string;
-  chats: ChatSession[];
-}
+export { ChatMessage, ChatSession, ChatHistoryGroup };
 
 export const useChatHistory = () => {
   const [chatHistory, setChatHistory] = useState<ChatHistoryGroup[]>([]);
@@ -34,38 +15,6 @@ export const useChatHistory = () => {
   const [currentChatMessages, setCurrentChatMessages] = useState<ChatMessage[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
-
-  // Get formatted date for grouping
-  const getFormattedDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return format(date, 'MMMM d, yyyy');
-    }
-  };
-
-  // Group chats by date
-  const groupChatsByDate = (chats: ChatSession[]) => {
-    const groups: Record<string, ChatSession[]> = {};
-    
-    chats.forEach(chat => {
-      const date = getFormattedDate(chat.createdAt);
-      if (!groups[date]) groups[date] = [];
-      groups[date].push(chat);
-    });
-    
-    return Object.keys(groups).map(date => ({
-      date,
-      chats: groups[date]
-    }));
-  };
 
   // Fetch chat history
   const fetchChatHistory = async () => {
@@ -76,22 +25,7 @@ export const useChatHistory = () => {
     
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('chat_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      const formattedChats: ChatSession[] = data.map(chat => ({
-        id: chat.id,
-        title: chat.title,
-        time: format(new Date(chat.created_at), 'h:mm a'),
-        createdAt: chat.created_at
-      }));
-      
-      const groupedChats = groupChatsByDate(formattedChats);
+      const groupedChats = await chatService.fetchChatHistoryForUser(user.id);
       setChatHistory(groupedChats);
     } catch (error) {
       console.error('Error fetching chat history:', error);
@@ -117,23 +51,12 @@ export const useChatHistory = () => {
     }
     
     try {
-      const { data, error } = await supabase
-        .from('chat_history')
-        .insert([{ 
-          title, 
-          user_id: user.id 
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setCurrentChatId(data.id);
+      const chatId = await chatService.createNewChatForUser(user.id, title);
+      setCurrentChatId(chatId);
       setCurrentChatMessages([]);
       fetchChatHistory();
-      return data.id;
+      return chatId;
     } catch (error) {
-      console.error('Error creating chat:', error);
       toast({
         title: 'Error',
         description: 'Failed to create new chat',
@@ -149,28 +72,10 @@ export const useChatHistory = () => {
     
     setCurrentChatId(chatId);
     try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
-      
-      if (error) throw error;
-      
-      const formattedMessages: ChatMessage[] = data.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        isUser: msg.is_user,
-        keywords: msg.keywords || [],
-        summary: msg.summary || [],
-        followUps: msg.follow_ups || [],
-        createdAt: msg.created_at
-      }));
-      
-      setCurrentChatMessages(formattedMessages);
-      return formattedMessages;
+      const messages = await chatService.loadChatSessionMessages(chatId);
+      setCurrentChatMessages(messages);
+      return messages;
     } catch (error) {
-      console.error('Error loading chat session:', error);
       toast({
         title: 'Error',
         description: 'Failed to load chat messages',
@@ -191,44 +96,25 @@ export const useChatHistory = () => {
       return null;
     }
     
-    let chatId = currentChatId;
-    
-    if (!chatId) {
-      const chatTitle = message.isUser ? message.content.substring(0, 30) : 'New Chat';
-      chatId = await createNewChat(chatTitle);
-      if (!chatId) return null;
-    }
-    
     try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert([{
-          chat_id: chatId,
-          content: message.content,
-          is_user: message.isUser,
-          keywords: message.keywords || [],
-          summary: message.summary || [],
-          follow_ups: message.followUps || []
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      const newMessage: ChatMessage = {
-        id: data.id,
-        content: data.content,
-        isUser: data.is_user,
-        keywords: data.keywords || [],
-        summary: data.summary || [],
-        followUps: data.follow_ups || [],
-        createdAt: data.created_at
-      };
-      
-      setCurrentChatMessages(prev => [...prev, newMessage]);
+      const newMessage = await chatService.addMessageToChat(user.id, currentChatId, message);
+      if (newMessage) {
+        setCurrentChatMessages(prev => [...prev, newMessage]);
+        // If this was a new chat, update the currentChatId
+        if (!currentChatId && newMessage) {
+          const chatIdFromMessage = await supabase
+            .from('chat_messages')
+            .select('chat_id')
+            .eq('id', newMessage.id)
+            .single();
+            
+          if (chatIdFromMessage.data) {
+            setCurrentChatId(chatIdFromMessage.data.chat_id);
+          }
+        }
+      }
       return newMessage;
     } catch (error) {
-      console.error('Error adding message:', error);
       toast({
         title: 'Error',
         description: 'Failed to save message',
@@ -243,18 +129,12 @@ export const useChatHistory = () => {
     if (!user || !user.id) return false;
     
     try {
-      const { error } = await supabase
-        .from('chat_history')
-        .update({ title: newTitle })
-        .eq('id', chatId)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      fetchChatHistory();
-      return true;
+      const success = await chatService.updateChatTitle(user.id, chatId, newTitle);
+      if (success) {
+        fetchChatHistory();
+      }
+      return success;
     } catch (error) {
-      console.error('Error updating chat title:', error);
       toast({
         title: 'Error',
         description: 'Failed to update chat title',
@@ -269,32 +149,16 @@ export const useChatHistory = () => {
     if (!user || !user.id) return false;
     
     try {
-      // First delete all messages in the chat
-      const { error: messagesError } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('chat_id', chatId);
-      
-      if (messagesError) throw messagesError;
-      
-      // Then delete the chat
-      const { error: chatError } = await supabase
-        .from('chat_history')
-        .delete()
-        .eq('id', chatId)
-        .eq('user_id', user.id);
-      
-      if (chatError) throw chatError;
-      
-      if (currentChatId === chatId) {
-        setCurrentChatId(null);
-        setCurrentChatMessages([]);
+      const success = await chatService.deleteChat(user.id, chatId);
+      if (success) {
+        if (currentChatId === chatId) {
+          setCurrentChatId(null);
+          setCurrentChatMessages([]);
+        }
+        fetchChatHistory();
       }
-      
-      fetchChatHistory();
-      return true;
+      return success;
     } catch (error) {
-      console.error('Error deleting chat:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete chat',
