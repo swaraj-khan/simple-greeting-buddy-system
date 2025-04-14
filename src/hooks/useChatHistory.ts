@@ -101,10 +101,10 @@ export const useChatHistory = () => {
       if (newMessage) {
         setCurrentChatMessages(prev => [...prev, newMessage]);
         
-        // If this was a new chat (no currentChatId), update it with the new chat ID from the service
-        if (!currentChatId && newMessage.chatId) {
-          setCurrentChatId(newMessage.chatId);
-          // Refresh chat history to show the new chat
+        // If this was a new chat (no currentChatId), update it with the new chat ID
+        if (!currentChatId) {
+          // The chatId property doesn't exist on the returned message, 
+          // so we need to rely on the currentChatId being set correctly by the service
           fetchChatHistory();
         }
       }
