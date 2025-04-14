@@ -19,12 +19,14 @@ import {
 } from "./ui/sheet";
 import { HistorySidebar } from './HistorySidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { useChatHistory } from '@/hooks/useChatHistory';
 import { useToast } from '@/hooks/use-toast';
 
 const Header = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { logout, user } = useAuth();
+  const { profile } = useProfile();
   const { createNewChat } = useChatHistory();
   const { toast } = useToast();
   
@@ -109,6 +111,9 @@ const Header = () => {
                 {user && (
                   <div className="text-xs text-muted-foreground mt-1">
                     {user.email}
+                    {profile?.username && (
+                      <div className="mt-1 font-medium">{profile.full_name || profile.username}</div>
+                    )}
                   </div>
                 )}
               </DropdownMenuLabel>
