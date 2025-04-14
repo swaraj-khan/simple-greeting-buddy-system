@@ -27,6 +27,7 @@ interface InputAreaProps {
   isTalkModeEnabled?: boolean;
   onTalkModeToggle?: () => void;
   authError?: boolean;
+  clearTranscript: () => void;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ 
@@ -46,7 +47,8 @@ const InputArea: React.FC<InputAreaProps> = ({
   inputRef,
   isTalkModeEnabled = false,
   onTalkModeToggle,
-  authError = false
+  authError = false,
+  clearTranscript
 }) => {
   const { toast } = useToast();
   const handleFileUpload = createFileUploader(toast);
@@ -77,6 +79,7 @@ const InputArea: React.FC<InputAreaProps> = ({
       
       autoSendTimerRef.current = setTimeout(() => {
         onSendMessage();
+        clearTranscript();
       }, 3000);
     }
     
@@ -85,7 +88,7 @@ const InputArea: React.FC<InputAreaProps> = ({
         clearTimeout(autoSendTimerRef.current);
       }
     };
-  }, [isRecording, autoSendEnabled, input, onSendMessage, isMuted]);
+  }, [isRecording, autoSendEnabled, input, onSendMessage, isMuted, clearTranscript]);
 
   useEffect(() => {
     if (!isRecording && autoSendTimerRef.current) {
@@ -168,6 +171,8 @@ const InputArea: React.FC<InputAreaProps> = ({
                 toggleMute={toggleMute}
                 autoSendEnabled={autoSendEnabled}
                 setAutoSendEnabled={setAutoSendEnabled}
+                isTalkModeEnabled={isTalkModeEnabled}
+                onTalkModeToggle={onTalkModeToggle}
               />
               <FileAttachmentMenu handleFileSelection={handleFileSelection} />
             </>

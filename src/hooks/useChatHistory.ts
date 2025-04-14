@@ -97,21 +97,18 @@ export const useChatHistory = () => {
     
     try {
       const newMessage = await chatService.addMessageToChat(user.id, currentChatId, message);
+      
       if (newMessage) {
         setCurrentChatMessages(prev => [...prev, newMessage]);
-        // If this was a new chat, update the currentChatId
-        if (!currentChatId && newMessage) {
-          const chatIdFromMessage = await supabase
-            .from('chat_messages')
-            .select('chat_id')
-            .eq('id', newMessage.id)
-            .single();
-            
-          if (chatIdFromMessage.data) {
-            setCurrentChatId(chatIdFromMessage.data.chat_id);
-          }
+        
+        // If this was a new chat (no currentChatId), update it with the new chat ID from the service
+        if (!currentChatId && newMessage.chatId) {
+          setCurrentChatId(newMessage.chatId);
+          // Refresh chat history to show the new chat
+          fetchChatHistory();
         }
       }
+      
       return newMessage;
     } catch (error) {
       toast({
