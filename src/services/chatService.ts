@@ -4,6 +4,19 @@ import { format } from 'date-fns';
 import { ChatSession, ChatMessage } from '@/types/chat';
 import { groupChatsByDate } from '@/utils/chatUtils';
 
+// Error handling helper function
+const handleServiceError = (error: any, operation: string): never => {
+  console.error(`Error in chatService (${operation}):`, error);
+  const errorMessage = error?.message || 'Unknown error occurred';
+  const errorCode = error?.code || 'UNKNOWN_ERROR';
+  
+  throw {
+    message: `Failed to ${operation}: ${errorMessage}`,
+    code: errorCode,
+    originalError: error
+  };
+};
+
 // Fetch chat history for a user
 export const fetchChatHistoryForUser = async (userId: string) => {
   if (!userId) {
@@ -28,8 +41,7 @@ export const fetchChatHistoryForUser = async (userId: string) => {
     
     return groupChatsByDate(formattedChats);
   } catch (error) {
-    console.error('Error fetching chat history:', error);
-    throw error;
+    handleServiceError(error, 'fetch chat history');
   }
 };
 
@@ -53,8 +65,7 @@ export const createNewChatForUser = async (userId: string, title: string = 'New 
     
     return data.id;
   } catch (error) {
-    console.error('Error creating chat:', error);
-    throw error;
+    handleServiceError(error, 'create new chat');
   }
 };
 
@@ -71,6 +82,10 @@ export const loadChatSessionMessages = async (chatId: string) => {
     
     if (error) throw error;
     
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
     const formattedMessages: ChatMessage[] = data.map(msg => ({
       id: msg.id,
       content: msg.content,
@@ -83,8 +98,7 @@ export const loadChatSessionMessages = async (chatId: string) => {
     
     return formattedMessages;
   } catch (error) {
-    console.error('Error loading chat session:', error);
-    throw error;
+    handleServiceError(error, 'load chat messages');
   }
 };
 
@@ -101,10 +115,13 @@ export const addMessageToChat = async (
   try {
     let targetChatId = chatId;
     
+    // Create a new chat if there's no chatId
     if (!targetChatId) {
       const chatTitle = message.isUser ? message.content.substring(0, 30) : 'New Chat';
       targetChatId = await createNewChatForUser(userId, chatTitle);
-      if (!targetChatId) return null;
+      if (!targetChatId) {
+        throw new Error('Failed to create a new chat');
+      }
     }
     
     const { data, error } = await supabase
@@ -122,6 +139,10 @@ export const addMessageToChat = async (
     
     if (error) throw error;
     
+    if (!data) {
+      throw new Error('No data returned after inserting message');
+    }
+    
     return {
       id: data.id,
       content: data.content,
@@ -132,19 +153,23 @@ export const addMessageToChat = async (
       createdAt: data.created_at
     } as ChatMessage;
   } catch (error) {
-    console.error('Error adding message:', error);
-    throw error;
+    handleServiceError(error, 'add message to chat');
   }
 };
 
 // Update chat title
 export const updateChatTitle = async (userId: string, chatId: string, newTitle: string) => {
-  if (!userId || !chatId) return false;
+  if (!userId || !chatId || !newTitle || newTitle.trim() === '') {
+    return false;
+  }
   
   try {
     const { error } = await supabase
       .from('chat_history')
-      .update({ title: newTitle })
+      .update({ 
+        title: newTitle.trim(),
+        updated_at: new Date().toISOString()
+      })
       .eq('id', chatId)
       .eq('user_id', userId);
     
@@ -152,8 +177,7 @@ export const updateChatTitle = async (userId: string, chatId: string, newTitle: 
     
     return true;
   } catch (error) {
-    console.error('Error updating chat title:', error);
-    throw error;
+    handleServiceError(error, 'update chat title');
   }
 };
 
@@ -162,6 +186,20 @@ export const deleteChat = async (userId: string, chatId: string) => {
   if (!userId || !chatId) return false;
   
   try {
+    // Use a transaction to ensure all operations succeed or fail together
+    const { data: chat, error: chatError } = await supabase
+      .from('chat_history')
+      .select('*')
+      .eq('id', chatId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (chatError) throw chatError;
+    
+    if (!chat) {
+      throw new Error('Chat not found or you do not have permission to delete it');
+    }
+    
     // First delete all messages in the chat
     const { error: messagesError } = await supabase
       .from('chat_messages')
@@ -171,17 +209,16 @@ export const deleteChat = async (userId: string, chatId: string) => {
     if (messagesError) throw messagesError;
     
     // Then delete the chat
-    const { error: chatError } = await supabase
+    const { error: chatDeleteError } = await supabase
       .from('chat_history')
       .delete()
       .eq('id', chatId)
       .eq('user_id', userId);
     
-    if (chatError) throw chatError;
+    if (chatDeleteError) throw chatDeleteError;
     
     return true;
   } catch (error) {
-    console.error('Error deleting chat:', error);
-    throw error;
+    handleServiceError(error, 'delete chat');
   }
 };

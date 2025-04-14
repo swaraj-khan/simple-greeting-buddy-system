@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useChatHistory } from '@/hooks/useChatHistory';
-import { ChatHistoryGroup } from '@/types/chat';
+import { ChatHistoryGroup as ChatHistoryGroupType } from '@/types/chat';
 import { ChatHistoryGroup as ChatHistoryGroupComponent } from './history/ChatHistoryGroup';
 import { ChatHistoryFooter } from './history/ChatHistoryFooter';
 import { PlusCircle } from 'lucide-react';
@@ -69,8 +69,8 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({ onSelectChat }) 
             </div>
           </div>
         ) : chatHistory.length > 0 ? (
-          chatHistory.map((group) => (
-            <ChatHistoryGroup 
+          chatHistory.map((group: ChatHistoryGroupType) => (
+            <ChatHistoryGroupComponent
               key={group.date} 
               group={group} 
               onSelectChat={onSelectChat}

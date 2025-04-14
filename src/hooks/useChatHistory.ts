@@ -2,17 +2,16 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChatMessage, ChatSession, ChatHistoryGroup } from '@/types/chat';
 import * as chatService from '@/services/chatService';
-import { supabase } from '@/integrations/supabase/client';
 
-export { ChatMessage, ChatSession, ChatHistoryGroup };
+// Export types using the correct syntax for isolatedModules
+export type { ChatMessage, ChatSession, ChatHistoryGroup } from '@/types/chat';
 
 export const useChatHistory = () => {
-  const [chatHistory, setChatHistory] = useState<ChatHistoryGroup[]>([]);
+  const [chatHistory, setChatHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [currentChatMessages, setCurrentChatMessages] = useState<ChatMessage[]>([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [currentChatMessages, setCurrentChatMessages] = useState([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -31,7 +30,7 @@ export const useChatHistory = () => {
       console.error('Error fetching chat history:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load chat history',
+        description: error.message || 'Failed to load chat history',
         variant: 'destructive'
       });
     } finally {
@@ -40,7 +39,7 @@ export const useChatHistory = () => {
   };
 
   // Create new chat
-  const createNewChat = async (title: string = 'New Chat') => {
+  const createNewChat = async (title = 'New Chat') => {
     if (!user || !user.id) {
       toast({
         title: 'Authentication required',
@@ -59,7 +58,7 @@ export const useChatHistory = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create new chat',
+        description: error.message || 'Failed to create new chat',
         variant: 'destructive'
       });
       return null;
@@ -67,7 +66,7 @@ export const useChatHistory = () => {
   };
 
   // Load chat session
-  const loadChatSession = async (chatId: string) => {
+  const loadChatSession = async (chatId) => {
     if (!user || !user.id) return [];
     
     setCurrentChatId(chatId);
@@ -78,7 +77,7 @@ export const useChatHistory = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load chat messages',
+        description: error.message || 'Failed to load chat messages',
         variant: 'destructive'
       });
       return [];
@@ -86,7 +85,7 @@ export const useChatHistory = () => {
   };
 
   // Add message to current chat
-  const addMessageToChat = async (message: Omit<ChatMessage, 'id' | 'createdAt'>) => {
+  const addMessageToChat = async (message) => {
     if (!user || !user.id) {
       toast({
         title: 'Authentication required',
@@ -117,7 +116,7 @@ export const useChatHistory = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to save message',
+        description: error.message || 'Failed to save message',
         variant: 'destructive'
       });
       return null;
@@ -125,7 +124,7 @@ export const useChatHistory = () => {
   };
 
   // Update chat title
-  const updateChatTitle = async (chatId: string, newTitle: string) => {
+  const updateChatTitle = async (chatId, newTitle) => {
     if (!user || !user.id) return false;
     
     try {
@@ -137,7 +136,7 @@ export const useChatHistory = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update chat title',
+        description: error.message || 'Failed to update chat title',
         variant: 'destructive'
       });
       return false;
@@ -145,7 +144,7 @@ export const useChatHistory = () => {
   };
 
   // Delete chat
-  const deleteChat = async (chatId: string) => {
+  const deleteChat = async (chatId) => {
     if (!user || !user.id) return false;
     
     try {
@@ -161,7 +160,7 @@ export const useChatHistory = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to delete chat',
+        description: error.message || 'Failed to delete chat',
         variant: 'destructive'
       });
       return false;
